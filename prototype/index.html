@@ -1,0 +1,739 @@
+<title>Kapsul Launcher</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;600;700&display=swap">
+<style>
+/* Layout : une console de poche dessinée au centre, l'écran (et l'écran 2) est un conteneur qui se met à l'échelle en cqw. */
+:root {
+  --page: #0a0d11;
+  --shell: #04060a;
+  --ink: #0b0e12;
+  --panel: #131922;
+  --line: #233041;
+  --fg: #e8edf3;
+  --mute: #8a97a8;
+  --focus: #ffc94a;
+  --display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --body: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --k: 1;
+  --tint: #3ddc84;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--page); color: var(--fg); }
+body { font-family: var(--body); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 32px; }
+button { font: inherit; color: inherit; }
+
+.page-head { max-width: 1000px; margin: 0 auto 16px; display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+.page-head h1 { font-family: var(--display); font-weight: 800; font-size: clamp(22px, 4vw, 34px); margin: 0; letter-spacing: -.01em; }
+.page-head h1 small { font-family: var(--body); font-weight: 600; font-size: 13px; color: var(--mute); letter-spacing: .08em; text-transform: uppercase; margin-left: 10px; vertical-align: middle; }
+.page-head p { margin: 4px 0 0; color: var(--mute); max-width: 60ch; font-size: 14px; line-height: 1.5; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.seg button, .tb { background: transparent; border: 0; border-radius: 7px; padding: 7px 11px; font-size: 13px; font-weight: 600; color: var(--mute); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--ink); }
+.tb { background: var(--panel); border: 1px solid var(--line); color: var(--fg); border-radius: 10px; }
+.tb[aria-pressed="true"] { border-color: var(--focus); color: var(--focus); }
+.seg button:focus-visible, .tb:focus-visible, .screen:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.device { width: min(100%, 1000px); margin: 0 auto; background: linear-gradient(180deg, #11161d, var(--shell)); border-radius: clamp(14px, 3vw, 34px); padding: clamp(8px, 2.2vw, 24px); box-shadow: 0 30px 80px -30px #000, inset 0 1px 0 #ffffff14; display: flex; flex-direction: column; align-items: center; gap: clamp(8px, 1.6vw, 16px); }
+.screen { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: clamp(4px, 1vw, 10px); container-type: inline-size; background: var(--ink); isolation: isolate; outline: none; }
+.screen2 { width: 64%; aspect-ratio: 4 / 3; }
+.hinge { width: 30%; height: clamp(4px, .8vw, 8px); border-radius: 99px; background: #1b222c; }
+.keys { max-width: 1000px; margin: 14px auto 0; color: var(--mute); font-size: 13px; line-height: 1.6; text-align: center; }
+.keys kbd { font-family: var(--body); font-weight: 700; font-size: 12px; background: var(--panel); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; color: var(--fg); }
+
+/* ---------- Fonds ---------- */
+.bg { position: absolute; inset: 0; z-index: -1; overflow: hidden; background: #090b0f; }
+.bg::before { content: ""; position: absolute; left: 10%; right: 10%; top: -30%; height: 90%; border-radius: 50%; background-color: var(--tint); opacity: 0; filter: blur(9cqw); transition: background-color .6s, opacity .6s; }
+.bg.tint::before { opacity: .3; }
+.bg.night { background: radial-gradient(120% 100% at 80% 0%, #1a2433 0%, #0a0e14 55%, #06080b 100%); }
+.bg.waves { background: linear-gradient(180deg, #0d2340 0%, #091727 60%, #050c15 100%); }
+.bg.waves::after, .bg.waves .w2 { content: ""; position: absolute; left: 0; right: 0; top: 38%; height: 40%; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 100' preserveAspectRatio='none'%3E%3Cpath d='M0 50 C 100 10 100 90 200 50 S 300 10 400 50' fill='none' stroke='%23ffffff' stroke-opacity='.35' stroke-width='1.2'/%3E%3Cpath d='M0 58 C 100 22 100 94 200 58 S 300 22 400 58' fill='none' stroke='%23ffffff' stroke-opacity='.18' stroke-width='1'/%3E%3C/svg%3E"); background-size: 50% 100%; background-repeat: repeat-x; animation: wave 14s linear infinite; }
+.bg.waves .w2 { top: 46%; opacity: .6; animation-duration: 22s; animation-direction: reverse; }
+@keyframes wave { to { background-position: 50cqw 0; } }
+.bg img, .bg video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.bg .veil { position: absolute; inset: 0; background: linear-gradient(180deg, #0008, #000a); }
+
+/* ---------- Chrome de l'écran ---------- */
+.status { position: absolute; top: 0; left: 0; right: 0; height: 6cqw; display: flex; align-items: center; justify-content: space-between; padding: 0 3.2cqw; font-size: 1.45cqw; font-weight: 700; color: #dfe6ee; z-index: 2; }
+.status .r { display: flex; gap: 1.6cqw; align-items: center; color: var(--mute); }
+.status .batt { display: inline-flex; align-items: center; gap: .5cqw; color: #dfe6ee; }
+.status .batt i { display: inline-block; width: 2.6cqw; height: 1.3cqw; border: .18cqw solid currentColor; border-radius: .3cqw; position: relative; }
+.status .batt i::after { content: ""; position: absolute; inset: .18cqw; right: 30%; background: currentColor; border-radius: .1cqw; }
+.brand { font-family: var(--display); font-weight: 800; letter-spacing: .04em; font-size: 1.5cqw; }
+.view { position: absolute; top: 6cqw; bottom: 6.6cqw; left: 0; right: 0; }
+.hints { position: absolute; bottom: 0; left: 0; right: 0; height: 6.6cqw; display: flex; align-items: center; justify-content: flex-end; gap: 2.6cqw; padding: 0 3.2cqw; font-size: 1.4cqw; font-weight: 600; color: #cfd7e1; z-index: 2; }
+.hints .h { display: inline-flex; align-items: center; gap: .8cqw; }
+.glyph { display: inline-grid; place-items: center; width: 2.4cqw; height: 2.4cqw; border-radius: 50%; font-weight: 800; font-size: 1.25cqw; color: #0b0e12; background: var(--gc, #e8edf3); line-height: 1; }
+.glyph.pill { width: auto; padding: 0 .8cqw; border-radius: 99px; font-size: 1cqw; letter-spacing: .04em; }
+.glyph.mono { background: #e8edf3; }
+.glyph.ps { background: #1d2430; color: var(--gc); font-size: 1.4cqw; }
+.toast { position: absolute; left: 50%; bottom: 8.5cqw; transform: translateX(-50%); background: #0d1117ee; border: .12cqw solid var(--line); padding: 1.1cqw 2cqw; border-radius: 1.2cqw; font-size: 1.5cqw; font-weight: 600; z-index: 6; max-width: 80%; text-align: center; }
+.toast b { color: var(--focus); }
+
+/* ---------- Cartes console (carrousel + grille) ---------- */
+.card { position: relative; flex: none; border: 0; padding: 0; overflow: hidden; border-radius: 1.6em; background: var(--panel); cursor: pointer; display: grid; place-items: center; transition: transform .28s cubic-bezier(.2,.8,.2,1), opacity .28s, box-shadow .28s; }
+.card .f { fill: var(--c); }
+.card .k { fill: #0b0e12; }
+.card svg { width: 62%; height: auto; }
+.c-count { position: absolute; top: 1.1em; right: 1.1em; font-size: 1.15em; font-weight: 700; background: #0008; color: #fff; padding: .3em .8em; border-radius: 99px; }
+.c-label { position: absolute; left: 1.4em; bottom: 1.1em; font-weight: 700; font-size: 1.5em; color: #fff; text-align: left; }
+.th-sobre { background: #121820; }
+.th-sobre .c-logo { font-family: var(--display); font-weight: 700; font-size: 3.6em; letter-spacing: -.01em; color: #f2f5f8; padding: 0 .4em; text-align: center; line-height: 1.05; }
+.th-sobre .c-line { position: absolute; left: 30%; right: 30%; bottom: 16%; height: .35em; border-radius: 99px; background: var(--c); }
+.th-console { background: radial-gradient(90% 80% at 50% 38%, color-mix(in srgb, var(--c) 30%, #141a22), #0f1319 75%); }
+.th-console svg { margin-bottom: 8%; }
+.th-perso { background: linear-gradient(150deg, var(--c), color-mix(in srgb, var(--c) 40%, #05070a)); }
+.th-perso .c-hero { position: absolute; right: -.06em; bottom: -.22em; font-family: var(--display); font-weight: 800; font-size: 13em; line-height: 1; letter-spacing: -.06em; color: #00000038; }
+.th-perso .c-figure { position: absolute; left: 6%; bottom: 0; height: 88%; }
+.th-perso .c-figure circle, .th-perso .c-figure path { fill: #ffffffd9; }
+.th-perso .c-label { left: auto; right: 1.4em; top: 1.1em; bottom: auto; }
+.th-perso .c-count { top: auto; bottom: 1.1em; }
+.th-logo { background: linear-gradient(135deg, var(--c), color-mix(in srgb, var(--c) 50%, #000)); }
+.th-logo .c-badge { font-family: var(--display); font-weight: 800; text-transform: uppercase; font-size: 3em; color: #fff; text-align: center; line-height: 1.05; padding: 0 .5em; text-shadow: 0 .08em .3em #0005; }
+.th-logo .c-maker { position: absolute; bottom: 1.2em; font-size: 1.3em; font-weight: 700; color: #ffffffb0; letter-spacing: .14em; text-transform: uppercase; }
+
+/* Carrousel */
+.v-carousel { display: flex; flex-direction: column; justify-content: center; gap: 2.6cqw; }
+.carousel { position: relative; height: calc(25cqw * var(--k)); }
+.track { position: absolute; top: 0; left: 0; height: 100%; display: flex; align-items: center; gap: 2.4cqw; transition: transform .38s cubic-bezier(.2,.8,.2,1); }
+.track .card { width: calc(36cqw * var(--k)); aspect-ratio: 16 / 10; font-size: calc(1cqw * var(--k)); opacity: .45; transform: scale(.88); }
+.track .card.on { opacity: 1; transform: scale(1); box-shadow: 0 0 0 .35cqw var(--focus), 0 2cqw 5cqw -1cqw #000c; }
+.caption { text-align: center; min-height: 7cqw; }
+.caption h2 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 3cqw; letter-spacing: -.01em; }
+.caption p { margin: .6cqw 0 0; font-size: 1.5cqw; color: var(--mute); }
+.caption p b { color: var(--fg); font-weight: 700; }
+
+/* Grille */
+.v-grid, .v-apps { display: flex; flex-direction: column; padding: 1.6cqw 5cqw 0; gap: 1.6cqw; }
+.vtitle { font-family: var(--display); font-weight: 700; font-size: 2.2cqw; margin: 0; }
+.vtitle span { font-family: var(--body); font-size: 1.4cqw; color: var(--mute); font-weight: 600; margin-left: 1cqw; }
+.grid { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 1.8cqw 1.6cqw; overflow-y: auto; scrollbar-width: none; padding: .6cqw .6cqw 1.6cqw; min-height: 0; flex: 1; align-content: start; }
+.cell { display: flex; flex-direction: column; gap: .7cqw; align-items: stretch; min-width: 0; }
+.cell .card { width: 100%; aspect-ratio: 1; font-size: calc(70cqw / var(--cols) / 24); }
+.cell .card.on { box-shadow: 0 0 0 .3cqw var(--focus); transform: scale(1.04); }
+.cell .c-label { display: none; }
+.cell .nm { font-size: 1.25cqw; font-weight: 600; text-align: center; color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cell.on .nm { color: var(--fg); }
+.app { width: 100%; aspect-ratio: 1; border-radius: 22%; border: 0; display: grid; place-items: center; background: var(--c); font-family: var(--display); font-weight: 800; font-size: 2.2cqw; color: #fff; cursor: pointer; transition: transform .2s; }
+.app.on { box-shadow: 0 0 0 .3cqw var(--focus); transform: scale(1.06); }
+
+/* XMB (PSP) */
+.v-xmb { overflow: hidden; }
+.xrow { position: absolute; top: 7%; left: 0; display: flex; align-items: flex-start; gap: 3.2cqw; transition: transform .32s cubic-bezier(.2,.8,.2,1); }
+.xi { width: calc(7.5cqw * var(--k)); display: flex; flex-direction: column; align-items: center; gap: .8cqw; opacity: .45; background: none; border: 0; padding: 0; cursor: pointer; transition: opacity .25s, transform .25s; transform-origin: 50% 30%; }
+.xi svg { width: 100%; height: auto; }
+.xi .f { fill: color-mix(in srgb, var(--c) 55%, #fff); }
+.xi .k { fill: #0b0e12; }
+.xi .xl { font-size: 1.15cqw; font-weight: 700; white-space: nowrap; opacity: 0; }
+.xi.on { opacity: 1; transform: scale(1.3); }
+.xi.on .xl { opacity: 1; }
+.xlist { position: absolute; top: 40%; display: flex; flex-direction: column; gap: 1.2cqw; transition: transform .25s cubic-bezier(.2,.8,.2,1); width: 60cqw; }
+.xg { display: flex; align-items: center; gap: 1.6cqw; opacity: .6; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; transition: opacity .2s; }
+.xg.past { opacity: 0; pointer-events: none; }
+.xg .box { width: calc(4.2cqw * var(--k)); transition: width .2s; }
+.xg.on { opacity: 1; }
+.xg.on .box { width: calc(6.6cqw * var(--k)); box-shadow: 0 0 0 .25cqw var(--focus); }
+.xg .t { font-size: 1.75cqw; font-weight: 700; display: block; }
+.xg .s { font-size: 1.2cqw; color: var(--mute); display: block; margin-top: .3cqw; }
+.xg .appi { width: calc(4.2cqw * var(--k)); aspect-ratio: 1; border-radius: 22%; background: var(--c); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 1.4cqw; color: #fff; flex: none; }
+
+/* Boîtes de jeux générées */
+.box { display: block; position: relative; flex: none; aspect-ratio: var(--ar, 5 / 7); border-radius: .5cqw; overflow: hidden; background: linear-gradient(160deg, hsl(var(--h) 55% 40%), hsl(calc(var(--h) + 50) 60% 14%)); box-shadow: 0 .6cqw 1.4cqw -.4cqw #000a; container-type: inline-size; background-size: cover; background-position: center; }
+.box .sp { position: absolute; top: 0; left: 0; right: 0; height: 13%; background: var(--sc); display: flex; align-items: center; padding: 0 7%; font-size: 7cqw; font-weight: 800; letter-spacing: .06em; color: #fff; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
+.box .bt { position: absolute; left: 8%; right: 8%; bottom: 9%; font-family: var(--display); font-weight: 800; font-size: 10.5cqw; line-height: 1.08; color: #fff; text-shadow: 0 .1em .5em #0007; overflow-wrap: anywhere; }
+.box.img .sp, .box.img .bt { display: none; }
+
+/* Liste des jeux */
+.v-games { display: grid; grid-template-rows: auto minmax(0, 1fr); padding: 1.2cqw 4cqw 0; gap: 1.6cqw; }
+.ghead { display: flex; align-items: center; gap: 1.4cqw; }
+.ghead .dot { width: 1.2cqw; height: 1.2cqw; border-radius: 50%; background: var(--c); }
+.ghead h2 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 2.3cqw; }
+.ghead span { font-size: 1.35cqw; color: var(--mute); font-weight: 600; }
+.ghead .emu { margin-left: auto; display: inline-flex; align-items: center; gap: .8cqw; background: #ffffff10; border-radius: 99px; padding: .5cqw 1.2cqw .5cqw .5cqw; color: var(--fg); }
+.ghead .emu i { width: 2cqw; height: 2cqw; border-radius: 30%; background: var(--ec); display: grid; place-items: center; font-style: normal; font-size: .95cqw; font-weight: 800; color: #fff; }
+.gbody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 3cqw; min-height: 0; }
+.gbody.solo { grid-template-columns: minmax(0, 1fr); }
+.glist { overflow-y: auto; scrollbar-width: none; display: flex; flex-direction: column; gap: .4cqw; min-height: 0; padding: .4cqw; }
+.gr { display: flex; align-items: center; gap: 1.2cqw; padding: .8cqw 1.2cqw; border-radius: 1cqw; background: transparent; border: 0; text-align: left; font-size: calc(1.65cqw * var(--k)); font-weight: 600; cursor: pointer; color: #c6cfda; }
+.gr .yr { margin-left: auto; color: var(--mute); font-size: .78em; font-variant-numeric: tabular-nums; }
+.gr .mini { width: 2.2em; }
+.gr.on { background: #ffffff14; color: #fff; box-shadow: 0 0 0 .22cqw var(--focus); }
+.ginfo { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2.2cqw; align-content: start; min-height: 0; }
+.ginfo .box { width: calc(15cqw * var(--k)); }
+.ginfo.nobox { grid-template-columns: minmax(0, 1fr); }
+.gt { margin: 0; font-family: var(--display); font-weight: 700; font-size: 2.3cqw; line-height: 1.15; text-wrap: balance; }
+.gm { display: flex; flex-wrap: wrap; gap: .6cqw; margin-top: 1cqw; }
+.gm span { font-size: 1.15cqw; font-weight: 700; background: #ffffff12; border-radius: 99px; padding: .35cqw .9cqw; color: #d5dde7; }
+.gd { font-size: 1.4cqw; line-height: 1.55; color: #c3ccd7; margin: 1.2cqw 0 0; }
+.gtime { margin-top: 1.2cqw; font-size: 1.2cqw; color: var(--mute); font-weight: 600; }
+.gtime b { color: var(--fg); }
+
+/* Options */
+.settings { position: absolute; top: 0; right: 0; bottom: 0; width: 50cqw; background: #0b0f14f2; backdrop-filter: blur(1cqw); border-left: .12cqw solid var(--line); z-index: 5; display: flex; flex-direction: column; padding: 2.4cqw 2.4cqw 7cqw; }
+.settings h3 { margin: 0 0 1.2cqw; font-family: var(--display); font-weight: 700; font-size: 2.2cqw; }
+.srows { overflow-y: auto; scrollbar-width: none; display: flex; flex-direction: column; gap: .2cqw; min-height: 0; }
+.ssec { font-size: 1cqw; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--mute); margin: 1.4cqw 0 .4cqw 1cqw; }
+.ssec:first-child { margin-top: 0; }
+.srow { display: flex; align-items: center; justify-content: space-between; gap: 1.4cqw; padding: .85cqw 1.2cqw; border-radius: .9cqw; font-size: 1.45cqw; font-weight: 600; background: transparent; border: 0; text-align: left; cursor: pointer; color: #cfd7e1; }
+.srow.on { background: #ffffff12; color: #fff; box-shadow: 0 0 0 .2cqw var(--focus); }
+.sval { display: inline-flex; align-items: center; gap: .8cqw; color: var(--fg); font-weight: 700; white-space: nowrap; }
+.sval .ar { color: var(--mute); }
+.srow.on .sval .ar { color: var(--focus); }
+.tog { width: 3.6cqw; height: 2cqw; border-radius: 99px; background: #2a3442; position: relative; }
+.tog::after { content: ""; position: absolute; top: .3cqw; left: .3cqw; width: 1.4cqw; height: 1.4cqw; border-radius: 50%; background: #8a97a8; transition: transform .18s; }
+.tog.yes { background: var(--focus); }
+.tog.yes::after { background: #0b0e12; transform: translateX(1.6cqw); }
+.bar { display: inline-flex; gap: .25cqw; }
+.bar i { width: .7cqw; height: 1.6cqw; border-radius: .2cqw; background: #2a3442; }
+.bar i.y { background: var(--focus); }
+
+/* Écran 2 */
+.s2view { position: absolute; inset: 0; padding: 4cqw 5cqw; display: flex; flex-direction: column; gap: 2.4cqw; }
+.s2view .ginfo .box { width: 24cqw; }
+.s2view .gt { font-size: 4cqw; }
+.s2view .gm span { font-size: 2cqw; padding: .6cqw 1.5cqw; }
+.s2view .gd { font-size: 2.4cqw; }
+.s2view .gtime { font-size: 2.1cqw; }
+.s2label { font-size: 1.8cqw; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--mute); }
+.s2sys h2 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 5.4cqw; }
+.s2sys dl { display: grid; grid-template-columns: auto 1fr; gap: 1.4cqw 3cqw; margin: 2cqw 0 0; font-size: 2.6cqw; }
+.s2sys dt { color: var(--mute); font-weight: 600; }
+.s2sys dd { margin: 0; font-weight: 700; }
+.s2nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.6cqw; overflow-y: auto; scrollbar-width: none; min-height: 0; }
+.s2nav button { border: 0; border-radius: 1.6cqw; padding: 2.2cqw 1.6cqw; background: #ffffff0e; font-size: 2.2cqw; font-weight: 700; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 1.4cqw; min-width: 0; }
+.s2nav button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s2nav button i { flex: none; width: 2.2cqw; height: 2.2cqw; border-radius: 50%; background: var(--c); }
+.s2nav button.on { box-shadow: 0 0 0 .4cqw var(--focus); background: #ffffff1a; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+</style>
+
+<header class="page-head">
+  <div>
+    <h1>Kapsul <small>prototype</small></h1>
+    <p>Maquette jouable du launcher. Changez de mode, de thème, de manette ou passez en double écran : tout se règle aussi depuis le menu Options, à la manette.</p>
+  </div>
+  <div class="toolbar" id="toolbar">
+    <div class="seg" role="group" aria-label="Mode du menu">
+      <button type="button" data-mode="carousel">Carrousel</button>
+      <button type="button" data-mode="xmb">PSP</button>
+      <button type="button" data-mode="grid">Grille</button>
+    </div>
+    <button type="button" class="tb" id="tbDual">Double écran</button>
+    <button type="button" class="tb" id="tbPad">Manette : Xbox</button>
+    <button type="button" class="tb" id="tbOpt">Options</button>
+  </div>
+</header>
+
+<main>
+  <div class="device" id="device">
+    <div class="screen" id="s1" tabindex="0" aria-label="Écran du launcher">
+      <div class="bg tint" id="bg"><div class="w2"></div></div>
+      <div class="status"><span class="brand">KAPSUL</span><span class="r"><span id="wifi">Wi‑Fi</span><span class="batt"><i></i>78 %</span><span id="clock">--:--</span></span></div>
+      <div class="view" id="view"></div>
+      <div class="hints" id="hints"></div>
+      <div class="settings" id="settings" hidden></div>
+      <div class="toast" id="toast" hidden></div>
+    </div>
+    <div class="hinge" id="hinge" hidden></div>
+    <div class="screen screen2" id="s2" hidden>
+      <div class="bg night"></div>
+      <div class="s2view" id="s2view"></div>
+    </div>
+  </div>
+  <p class="keys"><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> naviguer · <kbd>Entrée</kbd> valider · <kbd>Échap</kbd> retour · <kbd>X</kbd> changer la boîte · <kbd>O</kbd> options. Une manette branchée et le tactile marchent aussi.</p>
+</main>
+
+<input type="file" id="fileBg" accept="image/*,video/*" hidden>
+<input type="file" id="fileSfx" accept="audio/*" hidden>
+<input type="file" id="fileBox" accept="image/*" hidden>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const hash = s => { let h = 7; for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); };
+
+/* ---------- Données de démo ---------- */
+const SYSTEMS = [
+  { id: "android", name: "Jeux Android", short: "Android", maker: "Google", year: 2008, color: "#2fbf71", kind: "phone", hero: "A", emu: "Application native", ec: "#2fbf71", ar: "1 / 1" },
+  { id: "switch", name: "Nintendo Switch", short: "Switch", maker: "Nintendo", year: 2017, color: "#e4002b", kind: "hybrid", hero: "NX", emu: "Eden", ec: "#d33b2f", ar: "5 / 8" },
+  { id: "ps2", name: "PlayStation 2", short: "PS2", maker: "Sony", year: 2000, color: "#2d5bd8", kind: "home", hero: "PS2", emu: "NetherSX2", ec: "#3150c8", ar: "5 / 7" },
+  { id: "gc", name: "GameCube", short: "GameCube", maker: "Nintendo", year: 2001, color: "#6c4fd0", kind: "home", hero: "GC", emu: "Dolphin", ec: "#2b7de0", ar: "5 / 7" },
+  { id: "psp", name: "PSP", short: "PSP", maker: "Sony", year: 2004, color: "#4a6fa0", kind: "handheld", hero: "PSP", emu: "PPSSPP", ec: "#2e8bd6", ar: "4 / 7" },
+  { id: "3ds", name: "Nintendo 3DS", short: "3DS", maker: "Nintendo", year: 2011, color: "#c8102e", kind: "dual", hero: "3DS", emu: "Azahar", ec: "#e0662a", ar: "8 / 7" },
+  { id: "nds", name: "Nintendo DS", short: "DS", maker: "Nintendo", year: 2004, color: "#8d97a5", kind: "dual", hero: "DS", emu: "melonDS", ec: "#d1407a", ar: "8 / 7" },
+  { id: "gba", name: "Game Boy Advance", short: "GBA", maker: "Nintendo", year: 2001, color: "#4b3aa6", kind: "handheld", hero: "GBA", emu: "RetroArch · mGBA", ec: "#5a5a66", ar: "1 / 1" },
+  { id: "snes", name: "Super Nintendo", short: "SNES", maker: "Nintendo", year: 1990, color: "#7d73c3", kind: "home", hero: "SFC", emu: "RetroArch · Snes9x", ec: "#5a5a66", ar: "7 / 5" },
+  { id: "md", name: "Mega Drive", short: "Mega Drive", maker: "Sega", year: 1988, color: "#c9302c", kind: "home", hero: "MD", emu: "RetroArch · Genesis Plus GX", ec: "#5a5a66", ar: "5 / 7" },
+  { id: "psx", name: "PlayStation", short: "PS1", maker: "Sony", year: 1994, color: "#8a919c", kind: "home", hero: "PS", emu: "DuckStation", ec: "#3a9a5b", ar: "1 / 1" },
+  { id: "dc", name: "Dreamcast", short: "Dreamcast", maker: "Sega", year: 1998, color: "#e86a1c", kind: "home", hero: "DC", emu: "Flycast", ec: "#2f6fd6", ar: "1 / 1" }
+];
+const SYS = Object.fromEntries(SYSTEMS.map(s => [s.id, s]));
+
+const G = (t, y, g, p, dev, d) => ({ t, y, g, p, dev, d });
+const GAMES = {
+  android: [G("Dead Cells", 2019, "Action", 1, "Motion Twin", "Rogue-lite nerveux : chaque mort vous renvoie au début d'un château qui change de forme."), G("Stardew Valley", 2018, "Simulation", 1, "ConcernedApe", "Reprenez la ferme de votre grand-père et faites vivre Pelican Town au fil des saisons."), G("Brawlhalla", 2018, "Combat", 4, "Blue Mammoth", "Jeu de plateforme-combat gratuit, jusqu'à 4 joueurs, inspiré de Smash."), G("Sonic Mania Plus", 2021, "Plateforme", 2, "Headcannon / Sega", "Lettre d'amour aux Sonic 16-bit, avec des niveaux revisités et inédits."), G("Alto's Odyssey", 2018, "Arcade", 1, "Snowman", "Glisse infinie dans le désert, à jouer d'une main.")],
+  switch: [G("Mario Kart 8 Deluxe", 2017, "Course", 4, "Nintendo", "La version la plus complète de Mario Kart, 96 circuits avec le pass."), G("Hades", 2020, "Action", 1, "Supergiant", "Zagreus tente de s'évader des Enfers, une tentative à la fois."), G("Celeste", 2018, "Plateforme", 1, "Maddy Makes Games", "Une ascension exigeante et touchante au sommet d'une montagne.")],
+  ps2: [G("Shadow of the Colossus", 2005, "Aventure", 1, "Team Ico", "Seize colosses, une épée et un cheval pour ramener une âme à la vie."), G("Ōkami", 2006, "Aventure", 1, "Clover Studio", "Amaterasu redonne vie au Japon antique d'un coup de pinceau céleste."), G("Gran Turismo 4", 2004, "Course", 2, "Polyphony Digital", "Plus de 700 voitures et la simulation de référence de l'époque."), G("Kingdom Hearts", 2002, "RPG", 1, "Square", "Sora traverse les mondes Disney aux côtés de Donald et Dingo.")],
+  gc: [G("Super Smash Bros. Melee", 2001, "Combat", 4, "HAL Laboratory", "Le Smash le plus rapide, toujours joué en tournoi plus de vingt ans après."), G("The Wind Waker", 2002, "Aventure", 1, "Nintendo", "Link prend la mer dans un Hyrule englouti, en cel-shading."), G("Sonic Adventure 2: Battle", 2002, "Plateforme", 2, "Sonic Team", "Héros contre Dark : deux histoires croisées et le Chao Garden."), G("Metroid Prime", 2002, "Aventure", 1, "Retro Studios", "Samus passe à la vue subjective sur Tallon IV.")],
+  psp: [G("Monster Hunter Freedom Unite", 2009, "Action", 4, "Capcom", "Chasse coopérative à quatre, des centaines d'heures de contenu."), G("Tekken 6", 2009, "Combat", 2, "Bandai Namco", "Le roster complet de Tekken 6 dans la poche."), G("Daxter", 2006, "Plateforme", 1, "Ready at Dawn", "Le compagnon de Jak passe exterminateur à Haven City."), G("Lumines", 2004, "Réflexion", 2, "Q Entertainment", "Puzzle musical où chaque bloc posé suit le tempo.")],
+  "3ds": [G("A Link Between Worlds", 2013, "Aventure", 1, "Nintendo", "Link se glisse dans les murs pour passer d'Hyrule à Lorule."), G("Fire Emblem Awakening", 2012, "Stratégie", 1, "Intelligent Systems", "Tactique au tour par tour, liens entre personnages et mort permanente."), G("Kid Icarus: Uprising", 2012, "Action", 6, "Project Sora", "Pit vole et combat dans un shoot spectaculaire signé Sakurai.")],
+  nds: [G("Sonic Rush", 2005, "Plateforme", 2, "Dimps / Sonic Team", "Sonic et Blaze filent sur les deux écrans à pleine vitesse."), G("Pokémon Platine", 2008, "RPG", 1, "Game Freak", "Sinnoh, Giratina et le Monde Distorsion."), G("Mario Kart DS", 2005, "Course", 8, "Nintendo", "Mode Mission, circuits rétro et pilotage au turbo."), G("Professeur Layton et l'Étrange Village", 2007, "Réflexion", 1, "Level-5", "Énigmes à résoudre au stylet dans le village de Saint-Mystère.")],
+  gba: [G("Pokémon Émeraude", 2004, "RPG", 1, "Game Freak", "Hoenn, la Zone de Combat et Rayquaza."), G("Metroid Fusion", 2002, "Aventure", 1, "Nintendo", "Samus traquée par son double, le SA-X, sur la station B.S.L."), G("Advance Wars", 2001, "Stratégie", 4, "Intelligent Systems", "Guerre au tour par tour, accessible et redoutable."), G("Golden Sun", 2001, "RPG", 1, "Camelot", "La Psynergie au service d'un JRPG parmi les plus beaux de la console.")],
+  snes: [G("Super Metroid", 1994, "Aventure", 1, "Nintendo", "Le modèle de tous les metroidvania, sur Zèbes."), G("Chrono Trigger", 1995, "RPG", 1, "Square", "Un voyage dans le temps pour empêcher la fin du monde."), G("Street Fighter II Turbo", 1993, "Combat", 2, "Capcom", "Le classique du versus, plus rapide."), G("A Link to the Past", 1991, "Aventure", 1, "Nintendo", "Monde de la Lumière, monde des Ténèbres.")],
+  md: [G("Sonic the Hedgehog 2", 1992, "Plateforme", 2, "Sonic Team", "Sonic et Tails contre le Death Egg de Robotnik."), G("Streets of Rage 2", 1992, "Beat'em all", 2, "Sega", "Le beat'em all de référence, porté par la musique de Yuzo Koshiro."), G("Gunstar Heroes", 1993, "Action", 2, "Treasure", "Run and gun explosif aux armes combinables.")],
+  psx: [G("Tekken 3", 1998, "Combat", 2, "Namco", "Jin Kazama, Eddy Gordo et le mode Tekken Force."), G("Street Fighter Alpha 3", 1998, "Combat", 2, "Capcom", "Trois styles de combat et le World Tour."), G("Final Fantasy VII", 1997, "RPG", 1, "Square", "Cloud, Avalanche et Midgar."), G("Crash Bandicoot", 1996, "Plateforme", 1, "Naughty Dog", "Le marsupial file vers l'écran sur les îles Wumpa.")],
+  dc: [G("Soulcalibur", 1999, "Combat", 2, "Namco", "Combat à l'arme blanche, plus beau que l'arcade à sa sortie."), G("Sonic Adventure", 1999, "Plateforme", 1, "Sonic Team", "Six personnages jouables et Station Square."), G("Jet Set Radio", 2000, "Action", 1, "Smilebit", "Graffitis, rollers et Tokyo-to en cel-shading."), G("Shenmue", 1999, "Aventure", 1, "Sega AM2", "Ryo Hazuki cherche l'assassin de son père dans Yokosuka.")]
+};
+const ALL = Object.entries(GAMES).flatMap(([s, list]) => list.map(g => ((g.s = s), g)));
+const COLLECTIONS = [
+  { id: "c-sonic", name: "Tous les Sonic", short: "Sonic", maker: "Collection auto", color: "#1d5fe0", kind: "collection", hero: "S", rule: "titre contient « Sonic »", test: g => /sonic/i.test(g.t) },
+  { id: "c-fight", name: "Jeux de combat", short: "Combat", maker: "Collection auto", color: "#e0442f", kind: "collection", hero: "VS", rule: "genre = Combat", test: g => g.g === "Combat" }
+];
+const APPS_ITEM = { id: "apps", name: "Toutes les applis", short: "Applis", maker: "Android", color: "#55647a", kind: "apps", hero: "+" };
+const HOME = [...SYSTEMS, ...COLLECTIONS, APPS_ITEM];
+const APPS = [["RetroArch", "#3d3d48"], ["Dolphin", "#2b7de0"], ["NetherSX2", "#3150c8"], ["PPSSPP", "#2e8bd6"], ["Azahar", "#e0662a"], ["melonDS", "#d1407a"], ["DuckStation", "#3a9a5b"], ["Flycast", "#2f6fd6"], ["Eden", "#d33b2f"], ["Moonlight", "#4d5bd6"], ["Steam Link", "#1b2838"], ["YouTube", "#e62117"], ["Chrome", "#2a8e4f"], ["Discord", "#5865f2"], ["Fichiers", "#c9821b"], ["Play Store", "#0f9d58"], ["Musique", "#c2185b"], ["Paramètres", "#55647a"]].map(([n, c]) => ({ t: n, c }));
+
+const gamesOf = it => it.kind === "collection" ? ALL.filter(it.test) : it.kind === "apps" ? APPS : (GAMES[it.id] || []);
+const countLabel = it => it.kind === "apps" ? APPS.length + " applis" : gamesOf(it).length + " jeux";
+
+/* ---------- Réglages ---------- */
+const DEFAULTS = { mode: "carousel", size: 1, theme: "console", bg: "tint", sfx: true, sfxVol: 6, music: false, musicVol: 4, buttons: "xbox", confirm: "bottom", dual: false, screen2: "details", fields: { box: true, title: true, desc: true, year: true, genre: true, players: true, dev: false, time: true } };
+let S = structuredClone(DEFAULTS);
+try { const raw = localStorage.getItem("kapsul-proto-v1"); if (raw) { const o = JSON.parse(raw); S = { ...S, ...o, fields: { ...S.fields, ...(o.fields || {}) } }; } } catch (e) {}
+const save = () => { try { localStorage.setItem("kapsul-proto-v1", JSON.stringify(S)); } catch (e) {} };
+
+const ROWS = [
+  { sec: "Affichage", k: "mode", l: "Mode du menu", o: [["carousel", "Carrousel"], ["xmb", "PSP (XMB)"], ["grid", "Grille"]] },
+  { sec: "Affichage", k: "size", l: "Taille des icônes", o: [[0.8, "Petite"], [1, "Moyenne"], [1.2, "Grande"]] },
+  { sec: "Thème", k: "theme", l: "Style des consoles", o: [["sobre", "Logo sobre"], ["console", "Console"], ["perso", "Personnage"], ["logo", "Logo couleur"]] },
+  { sec: "Fond", k: "bg", l: "Fond d'écran", o: [["tint", "Teinte de la console"], ["night", "Nuit"], ["waves", "Vagues"], ["image", "Image importée"], ["video", "Vidéo importée"]] },
+  { sec: "Fond", act: "bg", l: "Importer une image ou une vidéo" },
+  { sec: "Sons", k: "sfx", l: "Effets sonores", t: "bool" },
+  { sec: "Sons", k: "sfxVol", l: "Volume des effets", t: "range" },
+  { sec: "Sons", k: "music", l: "Musique de fond", t: "bool" },
+  { sec: "Sons", k: "musicVol", l: "Volume de la musique", t: "range" },
+  { sec: "Sons", act: "move", l: "Son de déplacement perso" },
+  { sec: "Sons", act: "confirm", l: "Son de validation perso" },
+  { sec: "Manette", k: "buttons", l: "Icônes des boutons", o: [["xbox", "Xbox"], ["nintendo", "Nintendo"], ["ps", "PlayStation"]] },
+  { sec: "Manette", k: "confirm", l: "Valider avec", o: [["bottom", "Bouton du bas"], ["right", "Bouton de droite"]] },
+  { sec: "Double écran", k: "dual", l: "Second écran", t: "bool" },
+  { sec: "Double écran", k: "screen2", l: "Rôle de l'écran 2", o: [["details", "Fiche détaillée"], ["nav", "Navigation tactile"]] },
+  ...[["box", "Boîte"], ["title", "Titre"], ["desc", "Description"], ["year", "Année"], ["genre", "Genre"], ["players", "Joueurs"], ["dev", "Développeur"], ["time", "Temps de jeu"]].map(([f, l]) => ({ sec: "Infos des jeux", f, l, t: "bool" }))
+];
+
+/* ---------- État ---------- */
+const st = { view: "home", home: 0, game: 0, app: 0, set: 0, overlay: false, xi: {}, cur: null };
+const boxes = {};
+const media = { bg: null, bgType: null };
+
+/* ---------- Visuels ---------- */
+const SIL = {
+  handheld: '<rect class="f" x="8" y="17" width="104" height="38" rx="19"/><rect class="k" x="37" y="21" width="46" height="30" rx="3"/><circle class="k" cx="23" cy="36" r="6" opacity=".45"/><circle class="k" cx="97" cy="31" r="3" opacity=".45"/><circle class="k" cx="103" cy="38" r="3" opacity=".45"/>',
+  dual: '<rect class="f" x="33" y="3" width="54" height="31" rx="4"/><rect class="k" x="39" y="7" width="42" height="23" rx="2"/><rect class="f" x="33" y="36" width="54" height="31" rx="4"/><rect class="k" x="44" y="40" width="32" height="22" rx="2"/><circle class="k" cx="38.5" cy="51" r="2.6" opacity=".45"/><circle class="k" cx="81.5" cy="51" r="2.6" opacity=".45"/>',
+  home: '<rect class="f" x="16" y="12" width="88" height="26" rx="4"/><rect class="k" x="23" y="21" width="32" height="3" rx="1.5" opacity=".45"/><circle class="k" cx="92" cy="25" r="3" opacity=".45"/><path class="f" opacity=".85" d="M42 46h36a10 10 0 0 1 10 10v3a7 7 0 0 1-12 5l-5-5H49l-5 5a7 7 0 0 1-12-5v-3a10 10 0 0 1 10-10z"/>',
+  hybrid: '<rect x="30" y="15" width="60" height="40" rx="3" fill="#232a33"/><rect class="k" x="34" y="19" width="52" height="32" rx="2"/><rect x="17" y="15" width="14" height="40" rx="7" fill="#00b8d9"/><rect class="f" x="89" y="15" width="14" height="40" rx="7"/>',
+  phone: '<rect class="f" x="12" y="19" width="96" height="34" rx="15"/><rect class="k" x="31" y="22" width="58" height="28" rx="3"/><circle class="k" cx="22" cy="36" r="4.5" opacity=".45"/><circle class="k" cx="98" cy="36" r="4.5" opacity=".45"/>',
+  collection: '<rect class="f" x="34" y="10" width="38" height="52" rx="3" opacity=".35" transform="rotate(-12 53 36)"/><rect class="f" x="42" y="9" width="38" height="52" rx="3" opacity=".6" transform="rotate(-3 61 35)"/><rect class="f" x="50" y="8" width="38" height="52" rx="3" transform="rotate(7 69 34)"/>',
+  apps: [0, 1, 2].flatMap(r => [0, 1, 2].map(c => `<rect class="f" x="${36 + c * 17}" y="${8 + r * 19}" width="13" height="13" rx="4" opacity="${1 - (r + c) * .12}"/>`)).join("")
+};
+const sil = kind => `<svg viewBox="0 0 120 70" aria-hidden="true">${SIL[kind]}</svg>`;
+const FIGURE = '<svg class="c-figure" viewBox="0 0 60 90" aria-hidden="true"><circle cx="30" cy="20" r="13"/><path d="M8 90c0-22 9-46 22-46s22 24 22 46z"/></svg>';
+
+function cardInner(it) {
+  const count = `<span class="c-count">${countLabel(it)}</span>`;
+  switch (S.theme) {
+    case "sobre": return `<span class="c-logo">${esc(it.short)}</span><span class="c-line"></span>${count}`;
+    case "perso": return `<span class="c-hero">${esc(it.hero)}</span>${FIGURE}<span class="c-label">${esc(it.short)}</span>${count}`;
+    case "logo": return `<span class="c-badge">${esc(it.short)}</span><span class="c-maker">${esc(it.maker)}</span>${count}`;
+    default: return `${sil(it.kind)}<span class="c-label">${esc(it.short)}</span>${count}`;
+  }
+}
+const card = (it, i, extra = "") => `<button type="button" tabindex="-1" class="card th-${S.theme} ${extra}" data-i="${i}" style="--c:${it.color}" aria-label="${esc(it.name)}">${cardInner(it)}</button>`;
+
+function boxArt(g, cls = "") {
+  const sys = SYS[g.s], key = g.s + "/" + g.t;
+  if (boxes[key]) return `<span class="box img ${cls}" style="--ar:${sys.ar};background-image:url('${boxes[key]}')"></span>`;
+  return `<span class="box ${cls}" style="--ar:${sys.ar};--h:${hash(g.t) % 360};--sc:${sys.color}"><span class="sp">${esc(sys.short)}</span><span class="bt">${esc(g.t)}</span></span>`;
+}
+const playTime = g => { const h = hash(g.t + "t") % 42; return h < 3 ? "Jamais lancé" : `${h} h ${hash(g.t) % 60} min`; };
+
+function infoHTML(g) {
+  const f = S.fields, chips = [];
+  if (f.year) chips.push(g.y);
+  if (f.genre) chips.push(g.g);
+  if (f.players) chips.push(g.p > 1 ? `1–${g.p} joueurs` : "1 joueur");
+  if (f.dev) chips.push(g.dev);
+  if (st.cur && st.cur.kind === "collection") chips.push(SYS[g.s].short);
+  return `<div class="ginfo ${f.box ? "" : "nobox"}">${f.box ? boxArt(g) : ""}<div>
+    ${f.title ? `<h3 class="gt">${esc(g.t)}</h3>` : ""}
+    ${chips.length ? `<div class="gm">${chips.map(c => `<span>${esc(c)}</span>`).join("")}</div>` : ""}
+    ${f.desc ? `<p class="gd">${esc(g.d)}</p>` : ""}
+    ${f.time ? `<div class="gtime">Temps de jeu : <b>${playTime(g)}</b></div>` : ""}
+  </div></div>`;
+}
+
+/* ---------- Boutons ---------- */
+const GLYPHS = {
+  xbox: { bottom: ["A", "#5dc04a"], right: ["B", "#e2453c"], left: ["X", "#3b82e0"], top: ["Y", "#f0b91e"], start: "MENU" },
+  nintendo: { bottom: ["B"], right: ["A"], left: ["Y"], top: ["X"], start: "+" },
+  ps: { bottom: ["✕", "#8fb4ff"], right: ["○", "#ff7a7a"], left: ["□", "#ff9ce0"], top: ["△", "#4fdcae"], start: "OPTIONS" }
+};
+function glyph(role) {
+  const set = GLYPHS[S.buttons];
+  if (role === "start") return `<span class="glyph pill mono">${set.start}</span>`;
+  const pos = role === "a" ? S.confirm : role === "b" ? (S.confirm === "bottom" ? "right" : "bottom") : "left";
+  const [ch, col] = set[pos];
+  const cls = S.buttons === "nintendo" ? "mono" : S.buttons === "ps" ? "ps" : "";
+  return `<span class="glyph ${cls}" style="--gc:${col || "#e8edf3"}">${ch}</span>`;
+}
+function hints() {
+  let list;
+  if (st.overlay) list = [["a", "Modifier"], ["b", "Fermer"]];
+  else if (st.view === "home") list = S.mode === "xmb" ? [["a", "Lancer"], ["start", "Options"]] : [["a", "Ouvrir"], ["start", "Options"]];
+  else if (st.view === "games") list = [["x", "Changer la boîte"], ["a", "Jouer"], ["b", "Retour"]];
+  else list = [["a", "Ouvrir"], ["b", "Retour"]];
+  $("#hints").innerHTML = list.map(([r, l]) => `<span class="h">${glyph(r)}${l}</span>`).join("");
+}
+
+/* ---------- Rendu ---------- */
+const view = $("#view");
+function render() {
+  const mode = st.view === "home" ? S.mode : st.view;
+  view.className = "view v-" + mode;
+  if (st.view === "home" && S.mode === "carousel") {
+    view.innerHTML = `<div class="carousel"><div class="track" id="track">${HOME.map((it, i) => card(it, i)).join("")}</div></div><div class="caption" id="caption"></div>`;
+  } else if (st.view === "home" && S.mode === "grid") {
+    view.innerHTML = `<h2 class="vtitle">Bibliothèque<span>${SYSTEMS.length} systèmes · ${ALL.length} jeux</span></h2><div class="grid" id="grid" style="--cols:${cols()}">${HOME.map((it, i) => `<div class="cell" data-cell="${i}">${card(it, i)}<span class="nm">${esc(it.short)}</span></div>`).join("")}</div>`;
+  } else if (st.view === "home") {
+    view.innerHTML = `<div class="xrow" id="xrow">${HOME.map((it, i) => `<button type="button" tabindex="-1" class="xi" data-i="${i}" style="--c:${it.color}">${sil(it.kind)}<span class="xl">${esc(it.short)}</span></button>`).join("")}</div><div class="xlist" id="xlist"></div>`;
+  } else if (st.view === "games") {
+    const it = st.cur, list = gamesOf(it), solo = S.dual && S.screen2 === "details";
+    const emu = it.kind === "collection" ? `<span class="emu"><i style="--ec:${it.color}">≡</i>Règle : ${esc(it.rule)}</span>` : `<span class="emu"><i style="--ec:${it.ec}">${esc(it.emu[0])}</i>${esc(it.emu)}</span>`;
+    view.innerHTML = `<div class="ghead" style="--c:${it.color}"><span class="dot"></span><h2>${esc(it.name)}</h2><span>${list.length} jeux</span>${emu}</div>
+      <div class="gbody ${solo ? "solo" : ""}"><div class="glist" id="glist">${list.map((g, i) => `<button type="button" tabindex="-1" class="gr" data-i="${i}">${boxArt(g, "mini")}<span>${esc(g.t)}</span><span class="yr">${g.y}</span></button>`).join("")}</div>${solo ? "" : '<div id="ginfo"></div>'}</div>`;
+  } else {
+    view.innerHTML = `<h2 class="vtitle">Toutes les applis<span>${APPS.length} installées</span></h2><div class="grid" id="grid" style="--cols:9">${APPS.map((a, i) => `<div class="cell" data-cell="${i}"><button type="button" tabindex="-1" class="app" data-i="${i}" style="--c:${a.c}">${esc(a.t.slice(0, 2))}</button><span class="nm">${esc(a.t)}</span></div>`).join("")}</div>`;
+  }
+  view.querySelectorAll("[data-i]").forEach(el => el.addEventListener("click", () => tap(+el.dataset.i, el)));
+  focus();
+  hints();
+}
+const cols = () => S.size < 1 ? 7 : S.size > 1 ? 4 : 5;
+
+function focus() {
+  const W = $("#s1").clientWidth;
+  if (st.view === "home") {
+    const it = HOME[st.home];
+    document.documentElement.style.setProperty("--tint", it.color);
+    if (S.mode === "carousel") {
+      const cards = view.querySelectorAll(".card");
+      cards.forEach((c, i) => c.classList.toggle("on", i === st.home));
+      const c = cards[st.home];
+      $("#track").style.transform = `translateX(${W / 2 - (c.offsetLeft + c.offsetWidth / 2)}px)`;
+      const extra = it.kind === "collection" ? `Règle : <b>${esc(it.rule)}</b>` : it.kind === "apps" ? `Toutes les applications installées` : `${esc(it.maker)} · ${it.year} · <b>${esc(it.emu)}</b>`;
+      $("#caption").innerHTML = `<h2>${esc(it.name)}</h2><p>${countLabel(it)} · ${extra}</p>`;
+    } else if (S.mode === "grid") {
+      view.querySelectorAll(".cell").forEach((c, i) => { c.classList.toggle("on", i === st.home); c.querySelector(".card").classList.toggle("on", i === st.home); });
+      view.querySelector(`[data-cell="${st.home}"]`).scrollIntoView({ block: "nearest" });
+    } else xmbFocus(W);
+  } else if (st.view === "games") {
+    const rows = view.querySelectorAll(".gr");
+    rows.forEach((r, i) => r.classList.toggle("on", i === st.game));
+    rows[st.game]?.scrollIntoView({ block: "nearest" });
+    const g = gamesOf(st.cur)[st.game];
+    document.documentElement.style.setProperty("--tint", SYS[g.s].color);
+    const gi = $("#ginfo"); if (gi) gi.innerHTML = infoHTML(g);
+  } else {
+    view.querySelectorAll(".cell").forEach((c, i) => { c.classList.toggle("on", i === st.app); c.querySelector(".app").classList.toggle("on", i === st.app); });
+    view.querySelector(`[data-cell="${st.app}"]`).scrollIntoView({ block: "nearest" });
+  }
+  screen2();
+}
+
+function xmbFocus(W) {
+  const it = HOME[st.home], icons = view.querySelectorAll(".xi");
+  icons.forEach((c, i) => c.classList.toggle("on", i === st.home));
+  const ic = icons[st.home], anchor = W * 0.24;
+  $("#xrow").style.transform = `translateX(${anchor - (ic.offsetLeft + ic.offsetWidth / 2)}px)`;
+  const list = $("#xlist"), items = gamesOf(it), sel = st.xi[it.id] || 0;
+  if (list.dataset.cat !== it.id) {
+    list.dataset.cat = it.id;
+    list.innerHTML = items.map((g, i) => it.kind === "apps"
+      ? `<button type="button" tabindex="-1" class="xg" data-x="${i}"><span class="appi" style="--c:${g.c}">${esc(g.t.slice(0, 2))}</span><span><span class="t">${esc(g.t)}</span><span class="s">Application</span></span></button>`
+      : `<button type="button" tabindex="-1" class="xg" data-x="${i}">${boxArt(g)}<span><span class="t">${esc(g.t)}</span><span class="s">${g.y} · ${esc(g.g)}${it.kind === "collection" ? " · " + esc(SYS[g.s].short) : ""}</span></span></button>`).join("");
+    list.querySelectorAll("[data-x]").forEach(el => el.addEventListener("click", () => {
+      const i = +el.dataset.x; if (i === (st.xi[it.id] || 0)) input("a"); else { st.xi[it.id] = i; sfx("move"); focus(); }
+    }));
+  }
+  list.style.left = (anchor - ic.offsetWidth / 2) + "px";
+  const rows = list.querySelectorAll(".xg");
+  rows.forEach((r, i) => { r.classList.toggle("on", i === sel); r.classList.toggle("past", i < sel); });
+  if (rows[sel]) list.style.transform = `translateY(${-rows[sel].offsetTop}px)`;
+}
+
+/* ---------- Écran 2 ---------- */
+function screen2() {
+  const s2 = $("#s2"), on = S.dual;
+  s2.hidden = !on; $("#hinge").hidden = !on;
+  if (!on) return;
+  const out = $("#s2view");
+  if (S.screen2 === "nav") {
+    let items, sel;
+    if (st.view === "home") { items = HOME.map(it => [it.short, it.color]); sel = st.home; }
+    else if (st.view === "games") { items = gamesOf(st.cur).map(g => [g.t, SYS[g.s].color]); sel = st.game; }
+    else { items = APPS.map(a => [a.t, a.c]); sel = st.app; }
+    out.innerHTML = `<div class="s2label">Navigation tactile</div><div class="s2nav">${items.map(([n, c], i) => `<button type="button" tabindex="-1" data-n="${i}" class="${i === sel ? "on" : ""}" style="--c:${c}"><i></i><span>${esc(n)}</span></button>`).join("")}</div>`;
+    out.querySelectorAll("[data-n]").forEach(b => b.addEventListener("click", () => tap(+b.dataset.n)));
+    out.querySelector(".on")?.scrollIntoView({ block: "nearest" });
+    return;
+  }
+  if (st.view === "games") { out.innerHTML = `<div class="s2label">Fiche du jeu</div>${infoHTML(gamesOf(st.cur)[st.game])}`; return; }
+  if (st.view === "apps") { const a = APPS[st.app]; out.innerHTML = `<div class="s2label">Application</div><div class="s2sys"><h2>${esc(a.t)}</h2><dl><dt>Temps d'écran</dt><dd>${hash(a.t) % 9} h cette semaine</dd><dt>Raccourci</dt><dd>Maintenir ${glyph("a")} pour épingler</dd></dl></div>`; return; }
+  const it = HOME[st.home];
+  const pick = it.kind === "apps" ? null : gamesOf(it)[S.mode === "xmb" ? (st.xi[it.id] || 0) : 0];
+  const rows = it.kind === "collection"
+    ? [["Type", "Collection intelligente"], ["Règle", it.rule], ["Jeux", gamesOf(it).length], ["Systèmes", [...new Set(gamesOf(it).map(g => SYS[g.s].short))].join(", ")]]
+    : it.kind === "apps" ? [["Applis", APPS.length], ["Tri", "Les plus utilisées d'abord"]]
+    : [["Fabricant", it.maker], ["Sortie", it.year], ["Jeux", gamesOf(it).length], ["Émulateur", it.emu], ["Dernier lancé", pick ? pick.t : "—"]];
+  out.innerHTML = `<div class="s2label">${S.mode === "xmb" && pick ? "Sélection" : "Système"}</div>${S.mode === "xmb" && pick ? infoHTML(pick) : `<div class="s2sys"><h2>${esc(it.name)}</h2><dl>${rows.map(([a, b]) => `<dt>${a}</dt><dd>${esc(b)}</dd>`).join("")}</dl></div>`}`;
+}
+
+/* ---------- Options ---------- */
+const rowVal = r => r.f ? S.fields[r.f] : S[r.k];
+function renderSettings() {
+  const el = $("#settings");
+  el.hidden = !st.overlay;
+  if (!st.overlay) return;
+  let last = "", html = "";
+  ROWS.forEach((r, i) => {
+    if (r.sec !== last) { html += `<div class="ssec">${r.sec}</div>`; last = r.sec; }
+    let v;
+    if (r.act) v = `<span class="sval"><span class="ar">Choisir…</span></span>`;
+    else if (r.t === "bool") v = `<span class="tog ${rowVal(r) ? "yes" : ""}"></span>`;
+    else if (r.t === "range") v = `<span class="bar">${Array.from({ length: 10 }, (_, j) => `<i class="${j < S[r.k] ? "y" : ""}"></i>`).join("")}</span>`;
+    else v = `<span class="sval"><span class="ar">‹</span>${(r.o.find(o => o[0] === S[r.k]) || r.o[0])[1]}<span class="ar">›</span></span>`;
+    html += `<button type="button" tabindex="-1" class="srow ${i === st.set ? "on" : ""}" data-r="${i}"><span>${r.l}</span>${v}</button>`;
+  });
+  el.innerHTML = `<h3>Options</h3><div class="srows">${html}</div>`;
+  el.querySelectorAll("[data-r]").forEach(b => b.addEventListener("click", () => { st.set = +b.dataset.r; change(1, true); }));
+  el.querySelector(".srow.on")?.scrollIntoView({ block: "nearest" });
+}
+function change(d, activate) {
+  const r = ROWS[st.set];
+  if (r.act) { if (activate) pickFile(r.act); return; }
+  if (r.f) S.fields[r.f] = !S.fields[r.f];
+  else if (r.t === "bool") S[r.k] = !S[r.k];
+  else if (r.t === "range") S[r.k] = Math.max(0, Math.min(10, S[r.k] + (activate ? 1 : d) * (S[r.k] === 10 && activate ? -10 : 1)));
+  else { const i = r.o.findIndex(o => o[0] === S[r.k]); S[r.k] = r.o[(i + d + r.o.length) % r.o.length][0]; }
+  sfx("move"); apply(r.k || "fields"); renderSettings();
+}
+function apply(key) {
+  save();
+  document.documentElement.style.setProperty("--k", S.size);
+  const bg = $("#bg");
+  const wantMedia = (S.bg === "image" || S.bg === "video") && media.bg && media.bgType === S.bg;
+  bg.className = "bg " + (wantMedia ? "media" : S.bg === "image" || S.bg === "video" ? "tint" : S.bg);
+  bg.querySelectorAll("img,video,.veil").forEach(n => n.remove());
+  if (wantMedia) bg.insertAdjacentHTML("beforeend", S.bg === "video" ? `<video src="${media.bg}" autoplay muted loop playsinline></video><div class="veil"></div>` : `<img src="${media.bg}" alt=""><div class="veil"></div>`);
+  if (key === "music" || key === "musicVol") music();
+  syncToolbar();
+  if (["mode", "size", "theme", "fields", "dual", "screen2", "buttons", "confirm", "all"].includes(key)) render();
+  else hints();
+}
+
+/* ---------- Fichiers importés ---------- */
+let fileTarget = null;
+function pickFile(kind) {
+  fileTarget = kind;
+  ({ bg: $("#fileBg"), move: $("#fileSfx"), confirm: $("#fileSfx"), box: $("#fileBox") })[kind].click();
+}
+["#fileBg", "#fileSfx", "#fileBox"].forEach(sel => $(sel).addEventListener("change", async e => {
+  const file = e.target.files[0]; e.target.value = "";
+  if (!file) return;
+  if (fileTarget === "bg") {
+    media.bg = URL.createObjectURL(file); media.bgType = file.type.startsWith("video") ? "video" : "image";
+    S.bg = media.bgType; apply("bg"); renderSettings(); toast(`Fond importé : <b>${esc(file.name)}</b>`);
+  } else if (fileTarget === "box") {
+    const g = gamesOf(st.cur)[st.game];
+    boxes[g.s + "/" + g.t] = URL.createObjectURL(file); render(); toast(`Nouvelle boîte pour <b>${esc(g.t)}</b>`);
+  } else {
+    const a = audio(); if (!a) return;
+    try { custom[fileTarget] = await a.decodeAudioData(await file.arrayBuffer()); toast(`Son importé : <b>${esc(file.name)}</b>`); sfx(fileTarget); }
+    catch (err) { toast("Ce fichier audio n'a pas pu être lu. Essayez un MP3, OGG ou WAV."); }
+  }
+}));
+
+/* ---------- Son ---------- */
+let ac = null, musicTimer = null, musicGain = null;
+const custom = {};
+function audio() {
+  try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === "suspended") ac.resume(); } catch (e) { ac = null; }
+  return ac;
+}
+function tone(a, f1, f2, dur, vol, type = "triangle", at = 0) {
+  const o = a.createOscillator(), g = a.createGain(), t = a.currentTime + at;
+  o.type = type; o.frequency.setValueAtTime(f1, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .008); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + .02);
+}
+function sfx(kind) {
+  if (!S.sfx || !S.sfxVol) return;
+  const a = audio(); if (!a) return;
+  const v = S.sfxVol / 10 * .18;
+  if (custom[kind]) { const s = a.createBufferSource(), g = a.createGain(); s.buffer = custom[kind]; g.gain.value = S.sfxVol / 10; s.connect(g).connect(a.destination); s.start(); return; }
+  if (kind === "move") tone(a, 1250, 0, .045, v * .7);
+  else if (kind === "confirm") { tone(a, 660, 0, .09, v); tone(a, 990, 0, .14, v, "triangle", .07); }
+  else if (kind === "back") tone(a, 620, 330, .12, v);
+}
+function music() {
+  const a = S.music ? audio() : ac;
+  if (!S.music || !S.musicVol) { if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } if (musicGain) musicGain.gain.setTargetAtTime(0, a.currentTime, .3); return; }
+  if (!a) return;
+  if (!musicGain) { musicGain = a.createGain(); musicGain.connect(a.destination); }
+  musicGain.gain.setTargetAtTime(S.musicVol / 10 * .06, a.currentTime, .3);
+  if (musicTimer) return;
+  const notes = [220, 261.6, 329.6, 392, 440, 523.3, 392, 329.6], bass = [110, 87.3, 98, 82.4];
+  let n = 0;
+  const step = () => {
+    const t = a.currentTime;
+    const play = (f, dur, vol) => { const o = a.createOscillator(), g = a.createGain(); o.type = "sine"; o.frequency.value = f; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .05); g.gain.exponentialRampToValueAtTime(.0001, t + dur); o.connect(g).connect(musicGain); o.start(t); o.stop(t + dur); };
+    play(notes[n % 8], 1.4, .9);
+    if (n % 4 === 0) play(bass[(n / 4) % 4], 3.2, 1);
+    n++;
+  };
+  step(); musicTimer = setInterval(step, 420);
+}
+
+/* ---------- Toast ---------- */
+let toastT;
+function toast(html) { const t = $("#toast"); t.innerHTML = html; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 2600); }
+
+/* ---------- Entrées ---------- */
+function moveTo(key, i, len) { const n = Math.max(0, Math.min(len - 1, i)); if (n !== st[key]) { st[key] = n; sfx("move"); focus(); } }
+function launch(g, it) {
+  sfx("confirm");
+  if (it.kind === "apps") return toast(`Ouverture de <b>${esc(g.t)}</b>`);
+  const sys = SYS[g.s];
+  toast(`Lancement de <b>${esc(g.t)}</b> avec ${esc(sys.emu)}`);
+}
+function open(it) {
+  sfx("confirm");
+  if (it.kind === "apps") { st.view = "apps"; st.app = 0; }
+  else { st.view = "games"; st.cur = it; st.game = 0; }
+  render();
+}
+function input(a) {
+  if (a === "start") { st.overlay = !st.overlay; sfx(st.overlay ? "confirm" : "back"); renderSettings(); hints(); return; }
+  if (st.overlay) {
+    if (a === "up") { st.set = Math.max(0, st.set - 1); sfx("move"); renderSettings(); }
+    else if (a === "down") { st.set = Math.min(ROWS.length - 1, st.set + 1); sfx("move"); renderSettings(); }
+    else if (a === "left") change(-1);
+    else if (a === "right") change(1);
+    else if (a === "a") change(1, true);
+    else if (a === "b") { st.overlay = false; sfx("back"); renderSettings(); hints(); }
+    return;
+  }
+  if (st.view === "home") {
+    const it = HOME[st.home];
+    if (S.mode === "carousel") {
+      if (a === "left" || a === "up") moveTo("home", st.home - 1, HOME.length);
+      else if (a === "right" || a === "down") moveTo("home", st.home + 1, HOME.length);
+      else if (a === "a") open(it);
+    } else if (S.mode === "grid") {
+      const c = cols();
+      if (a === "left") moveTo("home", st.home - 1, HOME.length);
+      else if (a === "right") moveTo("home", st.home + 1, HOME.length);
+      else if (a === "up") moveTo("home", st.home - c, HOME.length);
+      else if (a === "down") moveTo("home", st.home + c, HOME.length);
+      else if (a === "a") open(it);
+    } else {
+      const list = gamesOf(it), cur = st.xi[it.id] || 0;
+      if (a === "left") moveTo("home", st.home - 1, HOME.length);
+      else if (a === "right") moveTo("home", st.home + 1, HOME.length);
+      else if (a === "up" || a === "down") { const n = Math.max(0, Math.min(list.length - 1, cur + (a === "up" ? -1 : 1))); if (n !== cur) { st.xi[it.id] = n; sfx("move"); focus(); } }
+      else if (a === "a" && list.length) launch(list[cur], it);
+    }
+  } else if (st.view === "games") {
+    const list = gamesOf(st.cur);
+    if (a === "up" || a === "left") moveTo("game", st.game - 1, list.length);
+    else if (a === "down" || a === "right") moveTo("game", st.game + 1, list.length);
+    else if (a === "a") launch(list[st.game], st.cur);
+    else if (a === "x") pickFile("box");
+    else if (a === "b") { st.view = "home"; sfx("back"); render(); }
+  } else {
+    if (a === "left") moveTo("app", st.app - 1, APPS.length);
+    else if (a === "right") moveTo("app", st.app + 1, APPS.length);
+    else if (a === "up") moveTo("app", st.app - 9, APPS.length);
+    else if (a === "down") moveTo("app", st.app + 9, APPS.length);
+    else if (a === "a") launch(APPS[st.app], APPS_ITEM);
+    else if (a === "b") { st.view = "home"; sfx("back"); render(); }
+  }
+}
+function tap(i) {
+  if (st.overlay) { st.overlay = false; renderSettings(); hints(); }
+  const key = st.view === "home" ? "home" : st.view === "games" ? "game" : "app";
+  if (st[key] === i) input("a"); else { st[key] = i; sfx("move"); focus(); }
+}
+
+const KEYS = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down", Enter: "a", " ": "a", Escape: "b", Backspace: "b", x: "x", X: "x", o: "start", O: "start" };
+document.addEventListener("keydown", e => {
+  if (e.target.closest && e.target.closest(".toolbar, input, select, textarea")) return;
+  const a = KEYS[e.key]; if (!a || e.ctrlKey || e.metaKey || e.altKey) return;
+  e.preventDefault(); input(a);
+});
+
+/* Manette (API Gamepad, disposition standard) */
+const pad = { prev: {}, next: {} };
+function rep(d, on) { const now = performance.now(); if (on) { if (!pad.prev[d]) { input(d); pad.next[d] = now + 380; } else if (now > pad.next[d]) { input(d); pad.next[d] = now + 110; } } pad.prev[d] = on; }
+function edge(k, on) {
+  if (on && !pad.prev[k]) {
+    if (k === "bottom") input(S.confirm === "bottom" ? "a" : "b");
+    else if (k === "right") input(S.confirm === "right" ? "a" : "b");
+    else if (k === "left") input("x");
+    else input("start");
+  }
+  pad.prev[k] = on;
+}
+let polling = false;
+function poll() {
+  let gps = []; try { gps = navigator.getGamepads ? [...navigator.getGamepads()] : []; } catch (e) {}
+  const gp = gps.find(Boolean);
+  if (gp) {
+    const b = i => !!(gp.buttons[i] && gp.buttons[i].pressed), ax = gp.axes || [];
+    rep("up", b(12) || ax[1] < -.5); rep("down", b(13) || ax[1] > .5); rep("left", b(14) || ax[0] < -.5); rep("right", b(15) || ax[0] > .5);
+    edge("bottom", b(0)); edge("right", b(1)); edge("left", b(2)); edge("start", b(9));
+  }
+  requestAnimationFrame(poll);
+}
+window.addEventListener("gamepadconnected", () => { if (!polling) { polling = true; poll(); } toast("Manette connectée"); });
+
+/* ---------- Barre d'outils ---------- */
+function syncToolbar() {
+  document.querySelectorAll("[data-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === S.mode)));
+  $("#tbDual").setAttribute("aria-pressed", String(S.dual));
+  $("#tbPad").textContent = "Manette : " + { xbox: "Xbox", nintendo: "Nintendo", ps: "PlayStation" }[S.buttons];
+  $("#tbOpt").setAttribute("aria-pressed", String(st.overlay));
+}
+document.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => { S.mode = b.dataset.mode; if (st.view !== "home") st.view = "home"; sfx("confirm"); apply("mode"); renderSettings(); }));
+$("#tbDual").addEventListener("click", () => { S.dual = !S.dual; apply("dual"); renderSettings(); });
+$("#tbPad").addEventListener("click", () => { const o = ["xbox", "nintendo", "ps"]; S.buttons = o[(o.indexOf(S.buttons) + 1) % 3]; apply("buttons"); renderSettings(); });
+$("#tbOpt").addEventListener("click", () => { input("start"); syncToolbar(); });
+
+/* ---------- Démarrage ---------- */
+const clock = () => { const d = new Date(); $("#clock").textContent = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }); };
+clock(); setInterval(clock, 15000);
+if (S.bg === "image" || S.bg === "video") S.bg = "tint";
+S.music = false;
+apply("all");
+window.addEventListener("resize", () => focus());
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => focus());
+})();
+</script>
